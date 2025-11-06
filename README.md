@@ -1,4 +1,4 @@
-# 🎬 GIF Maker v2.0 - Professional Edition
+# GIF Maker v2.0 - Professional Edition
 
 A powerful and feature-rich video to GIF converter built with Python. Transform your videos into high-quality GIFs with advanced editing capabilities, effects, and batch processing.
 
