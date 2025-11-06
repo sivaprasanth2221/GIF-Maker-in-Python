@@ -108,7 +108,11 @@ class GIFMakerV2(tk.Tk):
         super().__init__()
         
         self.title('GIF Maker v2.0 - Professional Edition')
-        self.geometry('1100x850')
+        self.geometry('1200x900')
+        self.minsize(1000, 700)  # Set minimum window size
+        
+        # Make window resizable and center it
+        self.state('zoomed') if self.tk.call('tk', 'windowingsystem') == 'win32' else self.geometry('1200x900')
         
         # Theme colors
         self.dark_mode = False
@@ -193,130 +197,184 @@ class GIFMakerV2(tk.Tk):
     def create_main_tab(self):
         """Create main tab with video selection and preview"""
         
+        # Make main tab scrollable
+        main_canvas = tk.Canvas(self.main_tab)
+        scrollbar = tk.Scrollbar(self.main_tab, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = tk.Frame(main_canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Enable mousewheel scrolling
+        def _on_mousewheel(event):
+            main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
         # Top section - Video selection
-        top_frame = tk.Frame(self.main_tab)
+        top_frame = tk.Frame(scrollable_frame)
         top_frame.pack(fill=tk.X, padx=10, pady=10)
         
         self.select_video_button = tk.Button(top_frame, text='📁 Select Video (Ctrl+O)', 
-                                             command=self.select_video, font=('Arial', 12, 'bold'))
+                                             command=self.select_video, font=('Arial', 11, 'bold'),
+                                             padx=15, pady=8)
         self.select_video_button.pack(side=tk.LEFT, padx=5)
         
-        self.video_info_label = tk.Label(top_frame, text='No video loaded', font=('Arial', 10))
-        self.video_info_label.pack(side=tk.LEFT, padx=20)
+        # Video info in a frame with wrapping
+        info_container = tk.Frame(top_frame)
+        info_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
         
-        # Preview section
-        preview_frame = tk.LabelFrame(self.main_tab, text="Video Preview", font=('Arial', 11, 'bold'))
-        preview_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.video_name_label = tk.Label(info_container, text='No video loaded', 
+                                         font=('Arial', 10, 'bold'), anchor='w')
+        self.video_name_label.pack(fill=tk.X)
         
-        self.canvas = tk.Canvas(preview_frame, width=700, height=400, background='#333333')
-        self.canvas.pack(pady=10)
+        self.video_info_label = tk.Label(info_container, text='', 
+                                         font=('Arial', 9), anchor='w', fg='gray')
+        self.video_info_label.pack(fill=tk.X)
+        
+        # Preview section - made more compact
+        preview_frame = tk.LabelFrame(scrollable_frame, text="Video Preview", font=('Arial', 10, 'bold'))
+        preview_frame.pack(fill=tk.BOTH, expand=False, padx=10, pady=5)
+        
+        self.canvas = tk.Canvas(preview_frame, width=600, height=300, background='#333333')
+        self.canvas.pack(pady=5)
         
         # Enable drag for crop
         self.canvas.bind('<Button-1>', self.start_crop)
         self.canvas.bind('<B1-Motion>', self.draw_crop)
         self.canvas.bind('<ButtonRelease-1>', self.end_crop)
         
-        # Preview controls
+        # Preview controls - more compact
         control_frame = tk.Frame(preview_frame)
-        control_frame.pack(pady=10)
+        control_frame.pack(pady=5)
         
-        self.play_button = tk.Button(control_frame, text='▶ Play', command=self.toggle_preview)
-        self.play_button.pack(side=tk.LEFT, padx=5)
+        self.play_button = tk.Button(control_frame, text='▶ Play', command=self.toggle_preview, padx=10)
+        self.play_button.pack(side=tk.LEFT, padx=3)
         
-        tk.Button(control_frame, text='⏮ First', command=self.goto_first_frame).pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text='⏭ Last', command=self.goto_last_frame).pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text='🔄 Reset Crop', command=self.reset_crop).pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text='⏮ First', command=self.goto_first_frame, padx=8).pack(side=tk.LEFT, padx=3)
+        tk.Button(control_frame, text='⏭ Last', command=self.goto_last_frame, padx=8).pack(side=tk.LEFT, padx=3)
+        tk.Button(control_frame, text='🔄 Reset Crop', command=self.reset_crop, padx=8).pack(side=tk.LEFT, padx=3)
         
-        # Timeline slider
-        timeline_frame = tk.LabelFrame(self.main_tab, text="Timeline Selection", font=('Arial', 10, 'bold'))
-        timeline_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Timeline slider - more compact
+        timeline_frame = tk.LabelFrame(scrollable_frame, text="Timeline Selection", font=('Arial', 10, 'bold'))
+        timeline_frame.pack(fill=tk.X, padx=10, pady=5)
         
         slider_frame = tk.Frame(timeline_frame)
-        slider_frame.pack(fill=tk.X, padx=10, pady=10)
+        slider_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        tk.Label(slider_frame, text="Start:").pack(side=tk.LEFT)
+        tk.Label(slider_frame, text="Start:", font=('Arial', 9)).grid(row=0, column=0, sticky='w', padx=(0, 5))
         self.start_slider = tk.Scale(slider_frame, from_=0, to=100, orient=tk.HORIZONTAL, 
-                                     length=300, command=self.update_timeline)
-        self.start_slider.pack(side=tk.LEFT, padx=10)
+                                     length=200, command=self.update_timeline, showvalue=True)
+        self.start_slider.grid(row=0, column=1, sticky='ew', padx=5)
         
-        tk.Label(slider_frame, text="End:").pack(side=tk.LEFT, padx=(20, 0))
+        tk.Label(slider_frame, text="End:", font=('Arial', 9)).grid(row=0, column=2, sticky='w', padx=(10, 5))
         self.end_slider = tk.Scale(slider_frame, from_=0, to=100, orient=tk.HORIZONTAL, 
-                                   length=300, command=self.update_timeline)
+                                   length=200, command=self.update_timeline, showvalue=True)
         self.end_slider.set(100)
-        self.end_slider.pack(side=tk.LEFT, padx=10)
+        self.end_slider.grid(row=0, column=3, sticky='ew', padx=5)
         
-        self.timeline_label = tk.Label(timeline_frame, text="Selection: 0s - 0s (0 frames)")
-        self.timeline_label.pack(pady=5)
+        slider_frame.columnconfigure(1, weight=1)
+        slider_frame.columnconfigure(3, weight=1)
         
-        # Export section
-        export_frame = tk.LabelFrame(self.main_tab, text="Export Settings", font=('Arial', 11, 'bold'))
-        export_frame.pack(fill=tk.X, padx=10, pady=10)
+        self.timeline_label = tk.Label(timeline_frame, text="Selection: 0s - 0s (0 frames)", font=('Arial', 9))
+        self.timeline_label.pack(pady=3)
         
-        settings_grid = tk.Frame(export_frame)
-        settings_grid.pack(padx=10, pady=10)
+        # Export section - more compact layout
+        export_frame = tk.LabelFrame(scrollable_frame, text="Export Settings", font=('Arial', 10, 'bold'))
+        export_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        settings_container = tk.Frame(export_frame)
+        settings_container.pack(padx=10, pady=5, fill=tk.X)
+        
+        # Left column
+        left_col = tk.Frame(settings_container)
+        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # Preset selector
-        tk.Label(settings_grid, text="Preset:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
+        preset_row = tk.Frame(left_col)
+        preset_row.pack(fill=tk.X, pady=2)
+        tk.Label(preset_row, text="Preset:", font=('Arial', 9), width=12, anchor='w').pack(side=tk.LEFT)
         self.preset_var = tk.StringVar(value='Custom')
-        preset_menu = ttk.Combobox(settings_grid, textvariable=self.preset_var, 
-                                   values=['Custom'] + list(self.presets.keys()), state='readonly')
-        preset_menu.grid(row=0, column=1, padx=10, pady=5, sticky='ew')
+        preset_menu = ttk.Combobox(preset_row, textvariable=self.preset_var, 
+                                   values=['Custom'] + list(self.presets.keys()), state='readonly', width=15)
+        preset_menu.pack(side=tk.LEFT, fill=tk.X, expand=True)
         preset_menu.bind('<<ComboboxSelected>>', self.apply_preset)
         
         # FPS
-        tk.Label(settings_grid, text="Speed (FPS):").grid(row=1, column=0, sticky='w', pady=5)
-        self.speed_entry = tk.Entry(settings_grid, width=15)
-        self.speed_entry.grid(row=1, column=1, padx=10, pady=5, sticky='ew')
+        fps_row = tk.Frame(left_col)
+        fps_row.pack(fill=tk.X, pady=2)
+        tk.Label(fps_row, text="Speed (FPS):", font=('Arial', 9), width=12, anchor='w').pack(side=tk.LEFT)
+        self.speed_entry = tk.Entry(fps_row, width=10)
+        self.speed_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.speed_entry.insert(0, '15')
         
         # Scale
-        tk.Label(settings_grid, text="Scale (0.1 - 2.0):").grid(row=2, column=0, sticky='w', pady=5)
-        self.scale_entry = tk.Entry(settings_grid, width=15)
-        self.scale_entry.grid(row=2, column=1, padx=10, pady=5, sticky='ew')
+        scale_row = tk.Frame(left_col)
+        scale_row.pack(fill=tk.X, pady=2)
+        tk.Label(scale_row, text="Scale:", font=('Arial', 9), width=12, anchor='w').pack(side=tk.LEFT)
+        self.scale_entry = tk.Entry(scale_row, width=10)
+        self.scale_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.scale_entry.insert(0, '0.5')
         
         # Output format
-        tk.Label(settings_grid, text="Output Format:").grid(row=3, column=0, sticky='w', pady=5)
+        format_row = tk.Frame(left_col)
+        format_row.pack(fill=tk.X, pady=2)
+        tk.Label(format_row, text="Format:", font=('Arial', 9), width=12, anchor='w').pack(side=tk.LEFT)
         self.format_var = tk.StringVar(value='GIF')
-        format_menu = ttk.Combobox(settings_grid, textvariable=self.format_var, 
-                                   values=['GIF', 'WebP', 'APNG'], state='readonly')
-        format_menu.grid(row=3, column=1, padx=10, pady=5, sticky='ew')
+        format_menu = ttk.Combobox(format_row, textvariable=self.format_var, 
+                                   values=['GIF', 'WebP', 'APNG'], state='readonly', width=15)
+        format_menu.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Right column
+        right_col = tk.Frame(settings_container)
+        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # Colors
-        tk.Label(settings_grid, text="Colors (32-256):").grid(row=1, column=2, sticky='w', pady=5, padx=(20, 0))
-        self.colors_entry = tk.Entry(settings_grid, width=15)
-        self.colors_entry.grid(row=1, column=3, padx=10, pady=5, sticky='ew')
+        colors_row = tk.Frame(right_col)
+        colors_row.pack(fill=tk.X, pady=2)
+        tk.Label(colors_row, text="Colors:", font=('Arial', 9), width=12, anchor='w').pack(side=tk.LEFT)
+        self.colors_entry = tk.Entry(colors_row, width=10)
+        self.colors_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.colors_entry.insert(0, '256')
         
-        # Optimize
+        # Checkboxes
         self.optimize_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(settings_grid, text="Optimize File Size", variable=self.optimize_var).grid(
-            row=2, column=2, columnspan=2, sticky='w', pady=5, padx=(20, 0))
+        tk.Checkbutton(right_col, text="Optimize File Size", variable=self.optimize_var, 
+                      font=('Arial', 9)).pack(anchor='w', pady=2)
         
-        # Reverse
         self.reverse_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(settings_grid, text="Reverse Playback", variable=self.reverse_var).grid(
-            row=3, column=2, columnspan=2, sticky='w', pady=5, padx=(20, 0))
+        tk.Checkbutton(right_col, text="Reverse Playback", variable=self.reverse_var,
+                      font=('Arial', 9)).pack(anchor='w', pady=2)
         
-        # Size estimation
-        self.size_label = tk.Label(export_frame, text="Estimated size: ~ MB", font=('Arial', 9, 'italic'))
-        self.size_label.pack(pady=5)
+        # Size estimation and export button
+        bottom_export = tk.Frame(export_frame)
+        bottom_export.pack(fill=tk.X, padx=10, pady=5)
         
-        # Export button
-        button_frame = tk.Frame(export_frame)
-        button_frame.pack(pady=10)
+        self.size_label = tk.Label(bottom_export, text="Estimated size: ~ MB", font=('Arial', 9, 'italic'))
+        self.size_label.pack(side=tk.LEFT, padx=10)
         
-        self.export_button = tk.Button(button_frame, text='🎬 Export GIF', command=self.export_gif,
-                                       font=('Arial', 12, 'bold'), bg='#4CAF50', fg='white', 
-                                       padx=20, pady=10)
-        self.export_button.pack(side=tk.LEFT, padx=5)
+        self.export_button = tk.Button(bottom_export, text='🎬 Export', command=self.export_gif,
+                                       font=('Arial', 11, 'bold'), bg='#4CAF50', fg='white', 
+                                       padx=25, pady=8)
+        self.export_button.pack(side=tk.RIGHT, padx=5)
         
         # Progress bar
-        self.progress = ttk.Progressbar(export_frame, orient=tk.HORIZONTAL, length=400, mode='determinate')
-        self.progress.pack(pady=10)
+        progress_frame = tk.Frame(export_frame)
+        progress_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        self.status_label = tk.Label(export_frame, text="Ready", font=('Arial', 9))
+        self.progress = ttk.Progressbar(progress_frame, orient=tk.HORIZONTAL, mode='determinate')
+        self.progress.pack(fill=tk.X, pady=2)
+        
+        self.status_label = tk.Label(progress_frame, text="Ready", font=('Arial', 9))
         self.status_label.pack()
+        
+        # Pack canvas and scrollbar
+        main_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
     
     def create_effects_tab(self):
         """Create effects and filters tab"""
@@ -523,9 +581,15 @@ class GIFMakerV2(tk.Tk):
             self.video_info = VideoProcessor.get_video_info(self.video_path)
             
             # Update UI
-            info_text = f"📹 {Path(self.video_path).name} | " \
-                       f"⏱ {self.video_info['duration']}s | " \
-                       f"📐 {self.video_info['width']}x{self.video_info['height']} | " \
+            filename = Path(self.video_path).name
+            # Truncate filename if too long
+            if len(filename) > 50:
+                filename = filename[:47] + "..."
+            
+            self.video_name_label.config(text=f"📹 {filename}")
+            
+            info_text = f"⏱ {self.video_info['duration']}s | " \
+                       f"📐 {self.video_info['width']}×{self.video_info['height']} | " \
                        f"🎞 {self.video_info['total_frames']} frames @ {self.video_info['fps']:.1f} fps"
             self.video_info_label.config(text=info_text)
             
@@ -644,7 +708,7 @@ class GIFMakerV2(tk.Tk):
             x1, y1, x2, y2 = self.crop_coords
             # Scale crop coords to actual frame size
             h, w = frame.shape[:2]
-            canvas_w, canvas_h = 700, 400
+            canvas_w, canvas_h = 650, 350
             scale_x = w / canvas_w
             scale_y = h / canvas_h
             
@@ -653,7 +717,7 @@ class GIFMakerV2(tk.Tk):
             img = img.crop(crop_box)
         
         # Resize for canvas
-        img.thumbnail((700, 400), Image.LANCZOS)
+        img.thumbnail((650, 350), Image.LANCZOS)
         
         # Apply text overlays for preview
         if self.text_overlays:
@@ -675,7 +739,7 @@ class GIFMakerV2(tk.Tk):
         
         photo = ImageTk.PhotoImage(img)
         self.canvas.delete('all')
-        self.canvas.create_image(350, 200, image=photo)
+        self.canvas.create_image(325, 175, image=photo)
         self.canvas.image = photo
         
         # Redraw crop rectangle if exists
@@ -1217,7 +1281,7 @@ Ctrl+E - Export
 Ctrl+T - Toggle Theme
 Space - Play/Pause Preview
 
-© 2024"""
+© 2025"""
         
         messagebox.showinfo("About GIF Maker v2.0", about_text)
 
